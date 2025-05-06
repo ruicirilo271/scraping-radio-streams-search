@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>🎧 Rádios Online</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.0.0-rc.4/dist/hls.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-yellow-100 min-h-screen p-6">
+    <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">🎧 Ouça Rádios Online</h1>
+
+    <div class="max-w-2xl mx-auto bg-white/60 backdrop-blur p-6 rounded-2xl shadow-xl">
+        <label for="radioSearch" class="block font-semibold text-gray-700 mb-2">Pesquise uma rádio:</label>
+        <input type="text" id="radioSearch" class="w-full p-3 rounded-lg bg-white shadow mb-6" placeholder="Digite o nome da rádio...">
+
+        <button id="searchBtn" class="bg-blue-600 text-white px-6 py-3 rounded-full shadow hover:bg-blue-700 transition w-full">Pesquisar Rádio</button>
+
+        <div class="flex items-center justify-between mb-6 mt-6">
+            <button id="playPauseBtn" class="bg-blue-600 text-white px-6 py-3 rounded-full shadow hover:bg-blue-700 transition">
+                <i id="playIcon" class="fas fa-play text-xl"></i>
+            </button>
+            <div>
+                <span class="text-lg font-semibold text-gray-800" id="currentRadioName">Escolha uma rádio</span>
+                <p id="listenerCount" class="text-sm text-gray-600 mt-1">👂 0 ouvintes</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow">
+            <h2 class="text-xl font-bold text-gray-700 mb-2">🎵 Tocando agora:</h2>
+            <p><strong>Artista:</strong> <span id="artist">-</span></p>
+            <p><strong>Música:</strong> <span id="song">-</span></p>
+        </div>
+
+        <img id="albumCover" src="https://placehold.co/300x300?text=Sem+Capa" alt="Capa do álbum" class="rounded-xl shadow mx-auto my-6" width="300" height="300">
+
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">📃 Letra da música</h3>
+        <textarea id="lyrics" rows="6" readonly class="w-full p-3 bg-white rounded-lg shadow text-gray-800 resize-none">Escolha uma rádio para ver a letra...</textarea>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
+
