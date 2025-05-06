@@ -1,135 +1,165 @@
 const player = new Audio();
 const searchBtn = document.getElementById("searchBtn");
 const radioSearch = document.getElementById("radioSearch");
-const playPauseBtn = document.getElementById("playPauseBtn");
-const playIcon = document.getElementById("playIcon");
+const playBtn = document.getElementById("playBtn");
+const pauseBtn = document.getElementById("pauseBtn");
 const currentRadioName = document.getElementById("currentRadioName");
 const listenerCount = document.getElementById("listenerCount");
 const artistSpan = document.getElementById("artist");
 const songSpan = document.getElementById("song");
 const albumCover = document.getElementById("albumCover");
 const lyricsArea = document.getElementById("lyrics");
+const radioList = document.getElementById("radioList");
+const favoritesList = document.getElementById("favoritesList");
 
-let isPlaying = false;
+let metadataInterval = null;
 let currentRadio = null;
 let currentArtist = "";
 let currentSong = "";
 let hls = null;
-let metadataInterval = null;
 
 searchBtn.addEventListener("click", () => {
     const query = radioSearch.value.trim();
-    if (query) {
-        fetchRadioInfo(query);
-    }
+    if (query) searchRadios(query);
 });
 
-playPauseBtn.addEventListener("click", () => {
-    if (isPlaying) {
-        stopPlayer();
-    } else {
-        startPlayer();
-    }
+playBtn.addEventListener("click", () => {
+    if (player.src) player.play();
 });
 
-function stopPlayer() {
+pauseBtn.addEventListener("click", () => {
+    player.pause();
+});
+
+function createRadioButton(radio, isFavorite = false) {
+    const btn = document.createElement("div");
+    btn.className = "flex items-center justify-between bg-white p-3 rounded-lg shadow hover:bg-blue-50 transition";
+
+    const left = document.createElement("div");
+    left.innerHTML = `
+        <img src="https://flagcdn.com/24x18/${radio.countrycode?.toLowerCase() || "pt"}.png" class="inline mr-2" />
+        <button class="text-left text-gray-700 hover:underline">${radio.name} (${radio.country})</button>
+    `;
+
+    left.querySelector("button").onclick = () => selectRadio(radio);
+
+    const favBtn = document.createElement("button");
+    favBtn.innerHTML = isFavorite ? "❌" : "⭐";
+    favBtn.className = "text-xl text-yellow-500 hover:text-yellow-700";
+    favBtn.onclick = () => toggleFavorite(radio);
+
+    btn.appendChild(left);
+    btn.appendChild(favBtn);
+    return btn;
+}
+
+async function searchRadios(query) {
+    try {
+        const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(query)}&order=clickcount`);
+        const data = await res.json();
+
+        radioList.innerHTML = "";
+        if (data.length === 0) {
+            radioList.innerHTML = "<p class='text-red-600'>Nenhuma rádio encontrada.</p>";
+            return;
+        }
+
+        data.forEach(radio => radioList.appendChild(createRadioButton(radio)));
+    } catch (err) {
+        console.error("Erro ao buscar rádios:", err);
+    }
+}
+
+function selectRadio(radio) {
+    currentRadio = radio;
+    currentRadioName.textContent = `${radio.name} (${radio.country})`;
+    listenerCount.textContent = `👂 ${radio.clickcount} ouvintes`;
+
     if (hls) {
         hls.destroy();
         hls = null;
     }
-    player.pause();
-    playIcon.classList.replace("fa-pause", "fa-play");
-    isPlaying = false;
-}
 
-function startPlayer() {
-    if (player.src) {
-        player.play();
-        playIcon.classList.replace("fa-play", "fa-pause");
-        isPlaying = true;
-    }
-}
-
-function startHTML5Player(url) {
-    stopPlayer();
-    player.src = url;
-    startPlayer();
-}
-
-function startHLSPlayer(url) {
-    stopPlayer();
-    if (Hls.isSupported()) {
+    if (radio.url_resolved.includes(".m3u8") && Hls.isSupported()) {
         hls = new Hls();
-        hls.loadSource(url);
+        hls.loadSource(radio.url_resolved);
         hls.attachMedia(player);
-        startPlayer();
+        player.play();
     } else {
-        alert("Seu navegador não suporta HLS.");
+        player.src = radio.url_resolved;
+        player.play();
     }
-}
 
-async function fetchRadioInfo(name) {
-    try {
-        const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(name)}&order=clickcount`);
-        const data = await res.json();
-        if (data.length === 0) return alert("Rádio não encontrada.");
-
-        currentRadio = data[0];
-        currentRadioName.textContent = `${currentRadio.name} (${currentRadio.country})`;
-        listenerCount.textContent = `👂 ${currentRadio.clickcount} ouvintes`;
-
-        if (currentRadio.url_resolved.includes(".m3u8")) {
-            startHLSPlayer(currentRadio.url_resolved);
-        } else {
-            startHTML5Player(currentRadio.url_resolved);
-        }
-
-        if (metadataInterval) clearInterval(metadataInterval);
-        await fetchMetadata();
-        metadataInterval = setInterval(fetchMetadata, 10000);
-    } catch (err) {
-        console.error("Erro ao buscar rádio:", err);
-    }
+    if (metadataInterval) clearInterval(metadataInterval);
+    fetchMetadata();
+    metadataInterval = setInterval(fetchMetadata, 10000);
 }
 
 async function fetchMetadata() {
     if (!currentRadio) return;
 
     try {
-        const streamUrl = currentRadio.url_resolved;
-        const res = await fetch(`https://radio-metadata-api-main.vercel.app/radio_info/?radio_url=${encodeURIComponent(streamUrl)}`);
-        const data = await res.json();
+        const url = `https://radio-metadata-api-main.vercel.app/radio_info/?radio_url=${encodeURIComponent(currentRadio.url_resolved)}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-        const newArtist = data.artist?.trim() || "Desconhecido";
-        const newSong = data.song?.trim() || "Desconhecido";
+        let artist = data.artist || "Desconhecido";
+        let song = data.song || "Desconhecido";
 
-        if (newArtist === currentArtist && newSong === currentSong) return;
+        if (artist !== currentArtist || song !== currentSong) {
+            currentArtist = artist;
+            currentSong = song;
+            artistSpan.textContent = artist;
+            songSpan.textContent = song;
 
-        currentArtist = newArtist;
-        currentSong = newSong;
-
-        artistSpan.textContent = newArtist;
-        songSpan.textContent = newSong;
-        currentRadioName.textContent = `${currentRadio.name} (${currentRadio.country}) – ${newSong}`;
-
-        if (newArtist === "Desconhecido" || newSong === "Desconhecido") {
-            albumCover.src = "https://placehold.co/300x300?text=Sem+Capa";
-        } else {
-            const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(newArtist + " " + newSong)}&media=music&limit=1`);
-            const itunesData = await itunesRes.json();
-            const cover = itunesData.results[0]?.artworkUrl100?.replace("100x100", "300x300") || "https://placehold.co/300x300?text=Sem+Capa";
-            albumCover.src = cover;
+            fetchAlbumCover(artist, song);
+            fetchLyrics(artist, song);
         }
-        
 
-        const lyricsRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(newArtist)}/${encodeURIComponent(newSong)}`);
-        const lyricsData = await lyricsRes.json();
-        lyricsArea.value = lyricsData.lyrics || "Letra não encontrada.";
     } catch (err) {
         console.error("Erro ao buscar metadados:", err);
-        artistSpan.textContent = "Desconhecido";
-        songSpan.textContent = "Desconhecido";
+    }
+}
+
+async function fetchAlbumCover(artist, song) {
+    try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist + " " + song)}&entity=song&limit=1`);
+        const data = await res.json();
+        const cover = data.results?.[0]?.artworkUrl100?.replace("100x100", "300x300");
+        albumCover.src = cover || "https://placehold.co/300x300?text=Sem+Capa";
+    } catch {
         albumCover.src = "https://placehold.co/300x300?text=Sem+Capa";
+    }
+}
+
+async function fetchLyrics(artist, song) {
+    try {
+        const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(song)}`);
+        const data = await res.json();
+        lyricsArea.value = data.lyrics || "Letra não encontrada.";
+    } catch {
         lyricsArea.value = "Letra não encontrada.";
     }
 }
+
+function toggleFavorite(radio) {
+    let favs = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+    const exists = favs.find(r => r.stationuuid === radio.stationuuid);
+    if (exists) {
+        favs = favs.filter(r => r.stationuuid !== radio.stationuuid);
+    } else {
+        favs.push(radio);
+    }
+
+    localStorage.setItem("favorites", JSON.stringify(favs));
+    loadFavorites();
+}
+
+function loadFavorites() {
+    const favs = JSON.parse(localStorage.getItem("favorites") || "[]");
+    favoritesList.innerHTML = "";
+    favs.forEach(radio => favoritesList.appendChild(createRadioButton(radio, true)));
+}
+
+loadFavorites();
