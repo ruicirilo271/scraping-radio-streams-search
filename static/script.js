@@ -9,6 +9,7 @@ const artistSpan = document.getElementById("artist");
 const songSpan = document.getElementById("song");
 const albumCover = document.getElementById("albumCover");
 const lyricsArea = document.getElementById("lyrics");
+const bioArea = document.getElementById("bio");
 const radioList = document.getElementById("radioList");
 const favoritesList = document.getElementById("favoritesList");
 
@@ -114,6 +115,7 @@ async function fetchMetadata() {
 
             fetchAlbumCover(artist, song);
             fetchLyrics(artist, song);
+            fetchArtistBio(artist);  // ⬅️ AQUI
         }
 
     } catch (err) {
@@ -142,16 +144,27 @@ async function fetchLyrics(artist, song) {
     }
 }
 
+async function fetchArtistBio(artist) {
+    try {
+        const apiKey = "6e7c0a29cd508f42a6737e5fd3d6110b"; // ← Insere aqui a tua chave da Last.fm
+        const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=${encodeURIComponent(artist)}&api_key=${apiKey}&format=json`);
+        const data = await res.json();
+        const bio = data?.artist?.bio?.summary?.replace(/<[^>]*>/g, "");
+        bioArea.value = bio || "Biografia não encontrada.";
+    } catch (err) {
+        bioArea.value = "Erro ao buscar biografia.";
+        console.error("Erro ao buscar biografia:", err);
+    }
+}
+
 function toggleFavorite(radio) {
     let favs = JSON.parse(localStorage.getItem("favorites") || "[]");
-
     const exists = favs.find(r => r.stationuuid === radio.stationuuid);
     if (exists) {
         favs = favs.filter(r => r.stationuuid !== radio.stationuuid);
     } else {
         favs.push(radio);
     }
-
     localStorage.setItem("favorites", JSON.stringify(favs));
     loadFavorites();
 }
