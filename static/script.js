@@ -56,7 +56,8 @@ function createRadioButton(radio, isFavorite = false) {
 
 async function searchRadios(query) {
     try {
-        const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(query)}&order=clickcount`);
+        const res = await fetch(`https://api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}`);
+
         const data = await res.json();
 
         radioList.innerHTML = "";
